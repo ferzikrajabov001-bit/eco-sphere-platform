@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- КАТАЛОГ ---
+model Category {
+  id        String    @id @default(uuid())
+  name      String
+  slug      String    @unique
+  parentId  String?
+  parent    Category? @relation("CategoryTree", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryTree")
+  products  Product[]
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+}
+
+model Product {
+  id          String    @id @default(uuid())
+  sku         String    @unique
+  name        String
+  slug        String    @unique
+  description String?
+  brand       String?
+  unit        String    // шт, л, кг
+  minQty      Int       @default(1)
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id])
+  attributes  Json?
+  price       Decimal   @db.Decimal(10, 2)
+  status      String    @default("ACTIVE")
+  images      String[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([slug])
+  @@index([categoryId])
+}
+
+// --- ЛИДЫ (CRM) ---
+enum LeadStatus {
+  NEW
+  IN_PROGRESS
+  WAITING_CLIENT
+  QUOTE_SENT
+  WON
+  LOST
+}
+
+model Lead {
+  id          String     @id @default(uuid())
+  source      String
+  companyName String?
+  inn         String?
+  contactName String
+  phone       String
+  email       String
+  message     String?
+  products    Json?
+  status      LeadStatus @default(NEW)
+  managerId   String?
+  comments    LeadComment[]
+  createdAt   DateTime   @default(now())
+}
+
+model LeadComment {
+  id        String   @id @default(uuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  authorId  String?
+  text      String
+  type      String   @default("INTERNAL")
+  createdAt DateTime @default(now())
+}
